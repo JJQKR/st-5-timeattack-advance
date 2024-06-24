@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FaHeart, FaRegHeart } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { todoApi } from "../api/todos";
@@ -20,13 +20,27 @@ export default function TodoList() {
 
   // TODO: 아래 handleLike 로 구현되어 있는 부분을 useMutation 으로 리팩터링 해보세요. 모든 기능은 동일하게 동작해야 합니다.
   const queryClient = useQueryClient();
+  useMutation({
+    mutationKey: ["todos", id],
+    mutationFn: handleLike,
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ["todos", id] });
+      const previousTodos = queryClient.getQueriesData(["todos", id]);
+      queryClient.setQueryData(["todos", id], (old) =>
+        prev.map((todo) =>
+          todo.id === id ? { ...todo, liked: !todo.liekd } : todo
+        )
+      );
+    },
+  });
+
   const handleLike = async (id, currentLiked) => {
     const previousTodos = [...todos];
     try {
       queryClient.setQueryData(["todos"], (prev) =>
         prev.map((todo) =>
-          todo.id === id ? { ...todo, liked: !todo.liked } : todo,
-        ),
+          todo.id === id ? { ...todo, liked: !todo.liked } : todo
+        )
       );
       await todoApi.patch(`/todos/${id}`, {
         liked: !currentLiked,
